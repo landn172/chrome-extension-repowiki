@@ -5,74 +5,82 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RepoWiki</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      width: 300px;
-      padding: 16px;
-      margin: 0;
+      width: 280px;
+      background: #fff;
     }
-    h2 {
-      font-size: 15px;
-      margin: 0 0 12px;
-      color: #24292f;
+    #header {
+      padding: 14px 16px 12px;
+      display: flex; align-items: center; justify-content: space-between;
     }
-    h3 {
-      font-size: 13px;
-      margin: 0 0 8px;
-      color: #24292f;
+    .title-row { display: flex; align-items: center; gap: 7px; }
+    .logo {
+      width: 22px; height: 22px;
+      background: #0f172a; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: white; font-weight: 700; flex-shrink: 0;
     }
-    #not-repo-msg,
-    #all-disabled-msg {
-      font-size: 12px;
-      color: #57606a;
-      display: none;
+    .title { font-size: 14px; font-weight: 700; color: #0f172a; }
+    #repo-chip {
+      font-size: 10px; color: #64748b;
+      background: #f1f5f9; border-radius: 20px;
+      padding: 3px 8px; border: 1px solid #e2e8f0;
+      max-width: 110px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    #pinned-btn {
+      margin: 0 12px 14px;
+      display: flex; align-items: center; gap: 10px;
+      background: #0f172a; border-radius: 10px;
+      padding: 12px 14px; cursor: pointer;
+    }
+    .pinned-name { font-size: 13px; font-weight: 600; color: white; flex: 1; }
+    .pinned-sub { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 1px; }
+    .open-icon { font-size: 15px; color: rgba(255,255,255,.6); }
+    .divider { height: 1px; background: #f1f5f9; margin: 0 12px 10px; }
+    #providers-section { padding: 0 12px 14px; }
+    .section-label {
+      font-size: 10px; font-weight: 600; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px;
     }
     .provider-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
+      display: flex; align-items: center;
+      padding: 5px 6px; border-radius: 7px; gap: 8px;
     }
-    .provider-name {
-      font-size: 13px;
-      color: #24292f;
+    .provider-row:hover { background: #f8fafc; }
+    .p-name { font-size: 12px; color: #374151; flex: 1; font-weight: 500; }
+    .toggle {
+      width: 28px; height: 16px;
+      background: #e2e8f0; border-radius: 8px;
+      position: relative; cursor: pointer; flex-shrink: 0;
     }
-    .open-link {
-      font-size: 12px;
-      color: #0969da;
-      text-decoration: none;
+    .toggle.on { background: #0f172a; }
+    .toggle::after {
+      content: '';
+      position: absolute; top: 2px; left: 2px;
+      width: 12px; height: 12px;
+      background: white; border-radius: 50%;
+      transition: left .15s;
     }
-    .open-link:hover {
-      text-decoration: underline;
-    }
-    hr {
-      border: none;
-      border-top: 1px solid #d0d7de;
-      margin: 12px 0;
-    }
-    #settings-section label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: #24292f;
-      margin-bottom: 6px;
-      cursor: pointer;
-    }
+    .toggle.on::after { left: 14px; }
   </style>
 </head>
 <body>
-  <h2>RepoWiki</h2>
-
-  <div id="links-section"></div>
-  <p id="not-repo-msg">Not a GitHub repo page.</p>
-  <p id="all-disabled-msg">No providers enabled.</p>
-
-  <hr>
-
-  <div id="settings-section">
-    <h3>Settings</h3>
+  <div id="header">
+    <div class="title-row">
+      <div class="logo">R</div>
+      <span class="title">RepoWiki</span>
+    </div>
+    <span id="repo-chip" style="display:none"></span>
   </div>
+
+  <div id="pinned-btn"></div>
+
+  <div class="divider"></div>
+
+  <div id="providers-section"></div>
 
   <script type="module" src="./main.ts"></script>
 </body>
