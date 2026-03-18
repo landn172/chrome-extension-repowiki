@@ -9,7 +9,7 @@
 
 A Chrome extension that adds one-click navigation from any GitHub repository page to its equivalent DeepWiki page.
 
-**URL transform:** `https://github.com/owner/repo/...` → `https://deepwiki.com/owner/repo/...`
+**URL transform:** `https://github.com/owner/repo/...` → `https://deepwiki.com/owner/repo` (always the repo root — sub-paths are not supported by DeepWiki)
 
 DeepWiki (deepwiki.com) is built by the Devin AI team. It auto-indexes public GitHub repos and generates interactive wiki documentation with AI chat support.
 
@@ -29,15 +29,15 @@ No background service worker, no options page, no external API calls.
 
 ---
 
-## URL Matching
+## URL Matching & Transform
 
 - **Match pattern:** `https://github.com/*/*`
 - Requires at least `owner/repo` — ignores GitHub root, profile pages, org pages
-- Path is preserved as-is in the transform
+- **Always transforms to the repo root** — sub-paths are stripped because DeepWiki only supports `deepwiki.com/owner/repo`
 - Examples:
   - `github.com/facebook/react` → `deepwiki.com/facebook/react`
-  - `github.com/facebook/react/issues/1234` → `deepwiki.com/facebook/react/issues/1234`
-  - `github.com/facebook/react/blob/main/README.md` → `deepwiki.com/facebook/react/blob/main/README.md`
+  - `github.com/facebook/react/issues/1234` → `deepwiki.com/facebook/react`
+  - `github.com/facebook/react/blob/main/README.md` → `deepwiki.com/facebook/react`
 
 ---
 
