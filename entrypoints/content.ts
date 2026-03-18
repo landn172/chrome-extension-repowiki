@@ -113,8 +113,8 @@ export default defineContentScript({
     }
 
     const closeDropdown = () => {
-      const el = document.querySelector<HTMLUListElement>('.repowiki-dropdown');
-      if (el) el.style.display = 'none';
+      document.querySelector<HTMLUListElement>(`[${BUTTON_ATTR}] .repowiki-dropdown`)
+        ?.style.setProperty('display', 'none');
     };
     document.addEventListener('click', closeDropdown);
 
