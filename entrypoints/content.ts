@@ -31,48 +31,107 @@ export default defineContentScript({
       const style = document.createElement('style');
       style.id = 'repowiki-styles';
       style.textContent = `
+        /* Light mode tokens */
+        :root {
+          --rw-btn-bg: #f6f8fa;
+          --rw-btn-hover: #e8ecf0;
+          --rw-btn-text: #24292f;
+          --rw-btn-border: rgba(31,35,40,.15);
+          --rw-dropdown-bg: #fff;
+          --rw-dropdown-border: #d0d7de;
+          --rw-dropdown-shadow: rgba(140,149,159,.2);
+          --rw-item-hover: #f6f8fa;
+          --rw-item-text: #24292f;
+          --rw-pin-color: #9ca3af;
+          --rw-pin-hover-bg: #f0f2f5;
+          --rw-pin-hover-text: #374151;
+          --rw-pin-hover-border: #e2e8f0;
+          --rw-pin-active-text: #24292f;
+          --rw-pin-active-bg: #f1f5f9;
+          --rw-pin-active-border: #e2e8f0;
+        }
+        /* Dark mode tokens — OS preference */
+        @media (prefers-color-scheme: dark) {
+          :root {
+            --rw-btn-bg: #21262d;
+            --rw-btn-hover: #30363d;
+            --rw-btn-text: #c9d1d9;
+            --rw-btn-border: rgba(240,246,252,.1);
+            --rw-dropdown-bg: #161b22;
+            --rw-dropdown-border: #30363d;
+            --rw-dropdown-shadow: rgba(1,4,9,.4);
+            --rw-item-hover: #21262d;
+            --rw-item-text: #c9d1d9;
+            --rw-pin-color: #6e7681;
+            --rw-pin-hover-bg: #30363d;
+            --rw-pin-hover-text: #c9d1d9;
+            --rw-pin-hover-border: #6e7681;
+            --rw-pin-active-text: #c9d1d9;
+            --rw-pin-active-bg: #30363d;
+            --rw-pin-active-border: #6e7681;
+          }
+        }
+        /* Dark mode tokens — GitHub explicit dark (overrides OS preference) */
+        html[data-color-mode="dark"] {
+          --rw-btn-bg: #21262d;
+          --rw-btn-hover: #30363d;
+          --rw-btn-text: #c9d1d9;
+          --rw-btn-border: rgba(240,246,252,.1);
+          --rw-dropdown-bg: #161b22;
+          --rw-dropdown-border: #30363d;
+          --rw-dropdown-shadow: rgba(1,4,9,.4);
+          --rw-item-hover: #21262d;
+          --rw-item-text: #c9d1d9;
+          --rw-pin-color: #6e7681;
+          --rw-pin-hover-bg: #30363d;
+          --rw-pin-hover-text: #c9d1d9;
+          --rw-pin-hover-border: #6e7681;
+          --rw-pin-active-text: #c9d1d9;
+          --rw-pin-active-bg: #30363d;
+          --rw-pin-active-border: #6e7681;
+        }
         .repowiki-group {
           display: inline-flex;
           position: relative;
-          border: 1px solid rgba(31,35,40,.15);
+          border: 1px solid var(--rw-btn-border);
           border-radius: 6px;
           overflow: visible;
         }
         .repowiki-primary {
           display: inline-flex; align-items: center; gap: 4px;
           padding: 3px 10px;
-          background: #f6f8fa;
-          border: none; border-right: 1px solid rgba(31,35,40,.15);
+          background: var(--rw-btn-bg);
+          border: none; border-right: 1px solid var(--rw-btn-border);
           border-radius: 5px 0 0 5px;
-          font-size: 12px; color: #24292f; cursor: pointer;
+          font-size: 12px; color: var(--rw-btn-text); cursor: pointer;
           font-family: inherit; white-space: nowrap; line-height: 20px;
         }
-        .repowiki-primary:hover { background: #e8ecf0; }
+        .repowiki-primary:hover { background: var(--rw-btn-hover); }
         .repowiki-chevron {
           display: inline-flex; align-items: center;
           padding: 3px 7px;
-          background: #f6f8fa;
+          background: var(--rw-btn-bg);
           border: none; border-radius: 0 5px 5px 0;
-          font-size: 10px; color: #24292f; cursor: pointer; line-height: 20px;
+          font-size: 10px; color: var(--rw-btn-text); cursor: pointer; line-height: 20px;
         }
-        .repowiki-chevron:hover { background: #e8ecf0; }
+        .repowiki-chevron:hover { background: var(--rw-btn-hover); }
         .repowiki-chevron-only {
           display: inline-flex; align-items: center; gap: 4px;
           padding: 3px 10px;
-          background: #f6f8fa;
+          background: var(--rw-btn-bg);
           border: none; border-radius: 5px;
-          font-size: 12px; color: #24292f; cursor: pointer;
+          font-size: 12px; color: var(--rw-btn-text); cursor: pointer;
           font-family: inherit; line-height: 20px;
         }
-        .repowiki-chevron-only:hover { background: #e8ecf0; }
+        .repowiki-chevron-only:hover { background: var(--rw-btn-hover); }
         .repowiki-dropdown {
           position: absolute;
           top: calc(100% + 4px); left: 0;
           z-index: 1000;
-          background: #fff;
-          border: 1px solid #d0d7de;
+          background: var(--rw-dropdown-bg);
+          border: 1px solid var(--rw-dropdown-border);
           border-radius: 6px;
-          box-shadow: 0 8px 24px rgba(140,149,159,.2);
+          box-shadow: 0 8px 24px var(--rw-dropdown-shadow);
           min-width: 160px; padding: 4px 0;
           margin: 0; list-style: none;
         }
@@ -80,9 +139,9 @@ export default defineContentScript({
           display: flex; align-items: center;
           padding: 6px 12px; gap: 8px;
         }
-        .repowiki-dropdown-item:hover { background: #f6f8fa; }
+        .repowiki-dropdown-item:hover { background: var(--rw-item-hover); }
         .repowiki-item-name {
-          font-size: 13px; color: #24292f; flex: 1;
+          font-size: 13px; color: var(--rw-item-text); flex: 1;
           white-space: nowrap; cursor: pointer;
         }
         .repowiki-pin-btn {
@@ -90,10 +149,18 @@ export default defineContentScript({
           width: 22px; height: 22px;
           border-radius: 4px; border: 1px solid transparent;
           background: transparent; cursor: pointer;
-          color: #9ca3af; padding: 0; flex-shrink: 0;
+          color: var(--rw-pin-color); padding: 0; flex-shrink: 0;
         }
-        .repowiki-pin-btn:hover { background: #f0f2f5; color: #374151; border-color: #e2e8f0; }
-        .repowiki-pin-btn.active { color: #24292f; background: #f1f5f9; border-color: #e2e8f0; }
+        .repowiki-pin-btn:hover {
+          background: var(--rw-pin-hover-bg);
+          color: var(--rw-pin-hover-text);
+          border-color: var(--rw-pin-hover-border);
+        }
+        .repowiki-pin-btn.active {
+          color: var(--rw-pin-active-text);
+          background: var(--rw-pin-active-bg);
+          border-color: var(--rw-pin-active-border);
+        }
       `;
       document.head.appendChild(style);
     }
