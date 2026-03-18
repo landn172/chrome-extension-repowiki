@@ -18,9 +18,9 @@ Rename the extension from "DeepWiki" to "RepoWiki" and refactor the architecture
 | DeepWiki | `https://deepwiki.com/{owner}/{repo}` | ✅ enabled |
 | CodeWiki | `https://codewiki.google/github.com/{owner}/{repo}` | ❌ disabled |
 | Zread | `https://zread.ai/{owner}/{repo}` | ❌ disabled |
-| Readmex | `https://readmex.com/{owner}/{repo}` (non-en-US)<br>`https://readmex.com/en-US/{owner}/{repo}` (en-US) | ❌ disabled |
+| Readmex | `https://readmex.com/en-US/{owner}/{repo}` (default)<br>`https://readmex.com/{owner}/{repo}` (zh) | ❌ disabled |
 
-Readmex URL is locale-aware: reads `navigator.language` at call time inside `transform`. If `navigator.language === 'en-US'`, prepends `en-US/` to the path. All other languages use the root path.
+Readmex URL is locale-aware: reads `navigator.language` at call time inside `transform`. If `navigator.language` starts with `zh`, uses the root path (no locale prefix). All other languages (including en) use the `en-US/` prefix.
 
 ---
 
@@ -74,7 +74,7 @@ export const PROVIDERS: WikiProvider[] = [
     id: 'readmex',
     name: 'Readmex',
     transform: (owner, repo) => {
-      const prefix = navigator.language === 'en-US' ? 'en-US/' : '';
+      const prefix = navigator.language.startsWith('zh') ? '' : 'en-US/';
       return `https://readmex.com/${prefix}${owner}/${repo}`;
     },
     enabledByDefault: false,
