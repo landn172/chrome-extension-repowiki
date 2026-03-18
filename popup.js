@@ -16,6 +16,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
     openBtn.disabled = false;
     openBtn.addEventListener('click', () => {
       chrome.tabs.create({ url: deepWikiUrl });
+      window.close();
     });
   } else {
     notRepoMsg.style.display = 'block';

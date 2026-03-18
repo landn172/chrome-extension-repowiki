@@ -75,11 +75,5 @@
     onUrlChange();
   };
 
-  const origReplaceState = history.replaceState.bind(history);
-  history.replaceState = function (...args) {
-    origReplaceState(...args);
-    onUrlChange();
-  };
-
   window.addEventListener('popstate', onUrlChange);
 })();
