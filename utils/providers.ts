@@ -3,6 +3,7 @@ export interface WikiProvider {
   name: string;
   transform: (owner: string, repo: string) => string;
   enabledByDefault: boolean;
+  pinnedByDefault: boolean;
 }
 
 export const PROVIDERS: readonly WikiProvider[] = [
@@ -11,18 +12,21 @@ export const PROVIDERS: readonly WikiProvider[] = [
     name: 'DeepWiki',
     transform: (owner, repo) => `https://deepwiki.com/${owner}/${repo}`,
     enabledByDefault: true,
+    pinnedByDefault: true,
   },
   {
     id: 'codewiki',
     name: 'CodeWiki',
     transform: (owner, repo) => `https://codewiki.google/github.com/${owner}/${repo}`,
-    enabledByDefault: false,
+    enabledByDefault: true,
+    pinnedByDefault: false,
   },
   {
     id: 'zread',
     name: 'Zread',
     transform: (owner, repo) => `https://zread.ai/${owner}/${repo}`,
-    enabledByDefault: false,
+    enabledByDefault: true,
+    pinnedByDefault: false,
   },
   {
     id: 'readmex',
@@ -31,7 +35,8 @@ export const PROVIDERS: readonly WikiProvider[] = [
       const prefix = navigator.language.startsWith('zh') ? '' : 'en-US/';
       return `https://readmex.com/${prefix}${owner}/${repo}`;
     },
-    enabledByDefault: false,
+    enabledByDefault: true,
+    pinnedByDefault: false,
   },
 ];
 
