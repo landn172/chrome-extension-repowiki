@@ -57,6 +57,8 @@ export default defineContentScript({
       document.head.appendChild(style);
     }
 
+    let activeDropdown: HTMLUListElement | null = null;
+
     function injectButton(): void {
       if (document.querySelector(`[${BUTTON_ATTR}]`)) return;
 
@@ -78,6 +80,7 @@ export default defineContentScript({
       wrapper.className = 'repowiki-wrapper';
 
       const button = document.createElement('button');
+      button.type = 'button';
       button.textContent = 'Wiki ▾';
       button.className = 'btn btn-sm';
       button.style.cssText = 'display:inline-flex;align-items:center;gap:4px;';
@@ -85,6 +88,7 @@ export default defineContentScript({
       const dropdown = document.createElement('ul');
       dropdown.className = 'repowiki-dropdown';
       dropdown.style.display = 'none';
+      activeDropdown = dropdown;
 
       for (const provider of enabledProviders) {
         const item = document.createElement('li');
@@ -105,21 +109,21 @@ export default defineContentScript({
         dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
       });
 
-      document.addEventListener('click', () => {
-        dropdown.style.display = 'none';
-      });
-
       wrapper.appendChild(button);
       wrapper.appendChild(dropdown);
       li.appendChild(wrapper);
       actionsContainer.insertBefore(li, actionsContainer.firstChild);
     }
 
+    const closeDropdown = () => { if (activeDropdown) activeDropdown.style.display = 'none'; };
+    document.addEventListener('click', closeDropdown);
+
     function observeAndInject(): MutationObserver {
       injectButton();
 
       const header = document.querySelector('header') ?? document.body;
-      const observer = new MutationObserver(() => {
+      let observer: MutationObserver;
+      observer = new MutationObserver(() => {
         if (!document.querySelector(`[${BUTTON_ATTR}]`)) {
           observer.disconnect();
           try {
@@ -157,6 +161,8 @@ export default defineContentScript({
     ctx.onInvalidated(() => {
       history.pushState = origPushState;
       activeObserver.disconnect();
+      document.removeEventListener('click', closeDropdown);
+      document.getElementById('repowiki-styles')?.remove();
     });
   },
 });
