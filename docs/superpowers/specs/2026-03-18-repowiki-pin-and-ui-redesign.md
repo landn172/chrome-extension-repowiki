@@ -1,7 +1,7 @@
 # RepoWiki Pin & UI Redesign Spec
 
 **Date:** 2026-03-18
-**Status:** Approved
+**Status:** Approved (updated 2026-03-18: pin in dropdown only; no popup pin button; SVG icon)
 
 ---
 
@@ -10,8 +10,8 @@
 Three changes in one spec:
 
 1. **All providers enabled by default** — `enabledByDefault: true` for all four providers.
-2. **Pin feature** — one provider can be pinned. On GitHub repo pages the pinned provider is exposed as a direct button (left half of a split button group); the remaining enabled providers are in the dropdown (right half). In the popup the pinned provider is shown as a large tap-target button.
-3. **Popup UI redesign** — Design C (minimal modern): remove the open-links section, add a pinned-provider button, keep a compact provider list with enable toggle + pin radio per row.
+2. **Pin feature** — one provider can be pinned. The pin operation lives **inside the GitHub page dropdown** (SVG pin icon per provider row). On GitHub repo pages the pinned provider is exposed as a direct button (left half of a split button group); the remaining enabled providers are in the dropdown. Both the dropdown pin and the popup show the same `pinnedProvider` storage key.
+3. **Popup UI redesign** — Design C (minimal modern): remove the open-links section, add a pinned-provider button, keep a compact provider list with **enable toggle only** (no pin button in popup).
 
 ---
 
@@ -99,7 +99,7 @@ Build a `<li data-repowiki-btn>` containing a `<div class="repowiki-group">` wit
 [<button class="repowiki-primary">DeepWiki ↗</button>][<button class="repowiki-chevron">▾</button>]
 ```
 - Left button: clicking opens pinned provider URL directly in new tab
-- Right button: clicking toggles the dropdown (same UL as before, but only non-pinned enabled providers)
+- Right button: clicking toggles the dropdown; dropdown contains ALL enabled providers (including pinned), each row has a pin icon on the right
 
 **Case B — pinned provider is enabled AND no other enabled providers:**
 ```
@@ -177,12 +177,55 @@ Injected via `<style id="repowiki-styles">` once. Match GitHub's `.btn.btn-sm` a
 /* dropdown styles unchanged from current */
 ```
 
+### Dropdown with pin icons
+
+The dropdown lists **all enabled providers** (not just non-pinned). Each row is:
+
+```
+[provider name (click → open)]  [pin icon button]
+```
+
+**Pin icon:** Inline SVG thumbtack, 12×12, `fill="currentColor"`:
+```html
+<svg class="repowiki-pin-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+  <path d="M17 4v7l2 3H5l2-3V4h10zm-5 16c-1.1 0-2-.9-2-2h4a2 2 0 01-2 2zM7 2h10v2H7V2z"/>
+</svg>
+```
+
+CSS for pin button in dropdown:
+```css
+.repowiki-pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 0;
+  flex-shrink: 0;
+}
+.repowiki-pin-btn:hover { background: #f0f2f5; color: #374151; border-color: #e2e8f0; }
+.repowiki-pin-btn.active { color: #24292f; background: #f1f5f9; border-color: #e2e8f0; }
+```
+
+**Pin button behavior:**
+1. Clicking a non-active pin button → `browser.storage.sync.set({ pinnedProvider: id })`
+2. On success: update in-memory `pinnedId`, re-render the entire `[data-repowiki-btn]` li (rebuilds the split button group to reflect the new pinned provider and updates all pin button active states in the open dropdown)
+3. On failure: no revert (pin button stays as it was)
+4. The dropdown remains open after a pin click (user may want to open the newly pinned provider or close manually)
+
+Re-render: call `injectButton()` logic again — remove the old `[data-repowiki-btn]` li and inject a fresh one with the updated `pinnedId`. Simpler than partial DOM mutation; the dropdown stays open state is reset (acceptable trade-off).
+
 ### Behavior preservation
 
 - Duplicate guard: `[data-repowiki-btn]` on the `<li>` — unchanged
 - SPA navigation: `history.pushState` patch + `popstate` + `MutationObserver` — unchanged
 - `ctx.onInvalidated`: restore `pushState`, disconnect observer, remove `#repowiki-styles` — unchanged
-- `closeDropdown`: `document.querySelector<HTMLUListElement>('[data-repowiki-btn] .repowiki-dropdown')?.style.setProperty('display', 'none')` — unchanged (still works because the dropdown is a descendant of `[data-repowiki-btn]`)
+- `closeDropdown`: `document.querySelector<HTMLUListElement>('[data-repowiki-btn] .repowiki-dropdown')?.style.setProperty('display', 'none')` — unchanged
 
 ---
 
@@ -241,11 +284,8 @@ Width: 280px.
 6. Call `renderPinnedBtn(repoInfo, pinnedId)` once at startup.
 7. Render `#providers-section`: one row per provider from `PROVIDERS`:
    - Provider name
-   - Pin button (📍 icon, highlighted when `provider.id === pinnedId`): on click:
-     1. Write `browser.storage.sync.set({ pinnedProvider: provider.id })`
-     2. On success: update `pinnedId = provider.id`, call `renderPinnedBtn(repoInfo, pinnedId)`, re-render all pin button highlights
-     3. On failure: no revert needed (radio state unchanged)
-   - Enable toggle: same write-then-mutate pattern with checkbox revert on failure. On success: also call `renderPinnedBtn(repoInfo, pinnedId)` to reflect updated active state.
+   - Enable toggle: write-then-mutate pattern with checkbox revert on failure. On success: also call `renderPinnedBtn(repoInfo, pinnedId)` to reflect updated active state.
+   - **No pin button in popup.** Pin is only controlled from the GitHub page dropdown.
 8. `defaultPinnedId` must be declared at **module scope** (outside `main()`), before the `main()` call:
    ```typescript
    const defaultPinnedId = PROVIDERS.find(p => p.pinnedByDefault)?.id ?? PROVIDERS[0].id;
@@ -255,7 +295,6 @@ Width: 280px.
 ### Storage writes
 
 - **Toggle change**: `browser.storage.sync.set({ enabledProviders: { ...enabledMap, [id]: newVal } })`, update `enabledMap` only on success, revert checkbox on failure. On success also call `renderPinnedBtn(repoInfo, pinnedId)` to update the pinned button's active state.
-- **Pin change**: `browser.storage.sync.set({ pinnedProvider: id })`, update `pinnedId` (the `let` variable in scope) only on success. Call `renderPinnedBtn(repoInfo, pinnedId)` and re-render pin button highlights. No revert UI needed (radio — the button just stays as it was if write fails).
 
 ---
 
@@ -279,7 +318,7 @@ No changes.
 ## Error Handling
 
 - Storage read failure: fall back to all-enabled defaults + DeepWiki pinned
-- Storage write failure (pin): no revert, pin button stays as it was
+- Storage write failure (pin in dropdown): no revert, dropdown pin button stays as it was
 - Storage write failure (toggle): revert checkbox, same as current
 - `browser.tabs.create` failure in popup: stay open (same as current)
 - `.pagehead-actions` not found: silent skip (same as current)
