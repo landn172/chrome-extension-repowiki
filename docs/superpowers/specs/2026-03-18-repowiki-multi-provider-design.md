@@ -18,7 +18,7 @@ Rename the extension from "DeepWiki" to "RepoWiki" and refactor the architecture
 | DeepWiki | `https://deepwiki.com/{owner}/{repo}` |
 | CodeWiki | `https://codewiki.google/github.com/{owner}/{repo}` |
 
-Both enabled by default.
+DeepWiki enabled by default. CodeWiki disabled by default.
 
 ---
 
@@ -60,7 +60,7 @@ export const PROVIDERS: WikiProvider[] = [
     id: 'codewiki',
     name: 'CodeWiki',
     transform: (owner, repo) => `https://codewiki.google/github.com/${owner}/${repo}`,
-    enabledByDefault: true,
+    enabledByDefault: false,
   },
 ];
 
