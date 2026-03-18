@@ -57,8 +57,6 @@ export default defineContentScript({
       document.head.appendChild(style);
     }
 
-    let activeDropdown: HTMLUListElement | null = null;
-
     function injectButton(): void {
       if (document.querySelector(`[${BUTTON_ATTR}]`)) return;
 
@@ -88,7 +86,6 @@ export default defineContentScript({
       const dropdown = document.createElement('ul');
       dropdown.className = 'repowiki-dropdown';
       dropdown.style.display = 'none';
-      activeDropdown = dropdown;
 
       for (const provider of enabledProviders) {
         const item = document.createElement('li');
@@ -115,7 +112,10 @@ export default defineContentScript({
       actionsContainer.insertBefore(li, actionsContainer.firstChild);
     }
 
-    const closeDropdown = () => { if (activeDropdown) activeDropdown.style.display = 'none'; };
+    const closeDropdown = () => {
+      const el = document.querySelector<HTMLUListElement>('.repowiki-dropdown');
+      if (el) el.style.display = 'none';
+    };
     document.addEventListener('click', closeDropdown);
 
     function observeAndInject(): MutationObserver {
