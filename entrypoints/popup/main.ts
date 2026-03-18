@@ -94,11 +94,13 @@ async function main(): Promise<void> {
     checkbox.setAttribute('data-provider-id', provider.id);
     checkbox.checked = isEnabled(provider.id, provider.enabledByDefault);
     checkbox.addEventListener('change', async () => {
-      enabledMap[provider.id] = checkbox.checked;
+      const newValue = checkbox.checked;
       try {
-        await browser.storage.sync.set({ enabledProviders: enabledMap });
+        await browser.storage.sync.set({ enabledProviders: { ...enabledMap, [provider.id]: newValue } });
+        enabledMap[provider.id] = newValue;
       } catch {
-        // Ignore storage write failures
+        // Revert checkbox if write failed
+        checkbox.checked = !newValue;
       }
       renderLinks();
     });
