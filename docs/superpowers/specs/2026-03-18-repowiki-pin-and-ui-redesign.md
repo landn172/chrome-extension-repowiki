@@ -137,6 +137,7 @@ Injected via `<style id="repowiki-styles">` once. Match GitHub's `.btn.btn-sm` a
   background: #f6f8fa;
   border: none;
   border-right: 1px solid rgba(31,35,40,.15);
+  border-radius: 5px 0 0 5px;
   font-size: 12px;
   color: #24292f;
   cursor: pointer;
@@ -151,6 +152,7 @@ Injected via `<style id="repowiki-styles">` once. Match GitHub's `.btn.btn-sm` a
   padding: 3px 7px;
   background: #f6f8fa;
   border: none;
+  border-radius: 0 5px 5px 0;
   font-size: 10px;
   color: #24292f;
   cursor: pointer;
@@ -164,6 +166,7 @@ Injected via `<style id="repowiki-styles">` once. Match GitHub's `.btn.btn-sm` a
   padding: 3px 10px;
   background: #f6f8fa;
   border: none;
+  border-radius: 5px;
   font-size: 12px;
   color: #24292f;
   cursor: pointer;
@@ -243,7 +246,11 @@ Width: 280px.
      2. On success: update `pinnedId = provider.id`, call `renderPinnedBtn(repoInfo, pinnedId)`, re-render all pin button highlights
      3. On failure: no revert needed (radio state unchanged)
    - Enable toggle: same write-then-mutate pattern with checkbox revert on failure. On success: also call `renderPinnedBtn(repoInfo, pinnedId)` to reflect updated active state.
-8. Top-level error handler: `main().catch(() => { /* render #pinned-btn in dimmed/inactive state */ renderPinnedBtn(null, defaultPinnedId) })` where `defaultPinnedId` is determined before the async work begins.
+8. `defaultPinnedId` must be declared at **module scope** (outside `main()`), before the `main()` call:
+   ```typescript
+   const defaultPinnedId = PROVIDERS.find(p => p.pinnedByDefault)?.id ?? PROVIDERS[0].id;
+   ```
+   Top-level error handler: `main().catch(() => { renderPinnedBtn(null, defaultPinnedId); })`. This falls back to rendering the pinned button in its dimmed/inactive state so the popup is never blank.
 
 ### Storage writes
 
