@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "DeepWiki",
+  "version": "1.0.0",
+  "description": "Open any GitHub repo in DeepWiki with one click",
+  "permissions": ["activeTab"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Open in DeepWiki"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
