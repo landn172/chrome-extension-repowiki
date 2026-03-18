@@ -3,7 +3,7 @@ import { getDeepWikiUrl } from '../utils/deepwiki';
 export default defineContentScript({
   matches: ['https://github.com/*/*'],
 
-  main() {
+  main(ctx) {
     const BUTTON_ATTR = 'data-deepwiki-btn';
 
     function injectButton(): void {
@@ -67,6 +67,10 @@ export default defineContentScript({
       onUrlChange();
     };
 
-    window.addEventListener('popstate', onUrlChange);
+    ctx.addEventListener(window, 'popstate', onUrlChange);
+    ctx.onInvalidated(() => {
+      history.pushState = origPushState;
+      activeObserver.disconnect();
+    });
   },
 });
