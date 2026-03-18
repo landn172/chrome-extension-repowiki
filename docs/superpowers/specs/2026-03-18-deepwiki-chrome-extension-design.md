@@ -51,9 +51,10 @@ No background service worker, no options page, no external API calls.
 
 **SPA Navigation Handling:**
 - GitHub is a single-page app; full page reloads don't always occur on navigation
-- Uses a `MutationObserver` on `document.body` to detect DOM changes after client-side navigation
-- Re-injects the button when the button group is re-rendered
-- Tracks injection state to avoid duplicate buttons
+- Uses a `MutationObserver` scoped to the repository header container (not `document.body`) to avoid performance issues from observing all DOM mutations
+- The observer disconnects itself once the button is successfully injected
+- URL changes are detected by polling `location.href` or listening for `popstate`/`pushState` to re-enable the observer on navigation
+- Duplicate injection is prevented by checking for a `data-deepwiki-btn` attribute on an existing button in the DOM — this is always tied to live DOM state rather than a stale boolean flag, so it correctly resets after SPA navigation destroys the old DOM
 
 **Button Styling:**
 - Matches GitHub's button group: same height, border-radius, font, border color
@@ -65,7 +66,8 @@ No background service worker, no options page, no external API calls.
 ## Popup (`popup.html` + `popup.js`)
 
 **Behavior:**
-- On open, queries the active tab URL via `chrome.tabs.query`
+- On open, queries the active tab URL via `chrome.tabs.query({active: true, currentWindow: true})`
+- The popup script runs as the user gesture context (triggered by clicking the toolbar icon), so `activeTab` permission is sufficient — no `tabs` permission needed
 - If URL matches `github.com/*/*`: shows transformed deepwiki.com URL + enabled "Open DeepWiki" button
 - If URL does not match: shows a disabled state with message "Not a GitHub repo page"
 - Button opens the deepwiki.com URL in a new tab
