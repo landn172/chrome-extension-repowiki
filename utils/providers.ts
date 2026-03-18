@@ -5,7 +5,7 @@ export interface WikiProvider {
   enabledByDefault: boolean;
 }
 
-export const PROVIDERS: WikiProvider[] = [
+export const PROVIDERS: readonly WikiProvider[] = [
   {
     id: 'deepwiki',
     name: 'DeepWiki',
@@ -36,10 +36,13 @@ export const PROVIDERS: WikiProvider[] = [
 ];
 
 /**
- * Extracts owner and repo from a GitHub URL.
- * Returns null for non-repo GitHub URLs or non-GitHub URLs.
+ * Extracts the first two path segments (owner, repo) from a GitHub URL.
+ * Returns null for non-GitHub URLs or URLs with fewer than two path segments.
  * Sub-paths, query strings, and hash fragments are ignored —
  * `[^/?#]+` stops at `/`, `?`, and `#` so no extra sanitization needed.
+ *
+ * Note: does not validate that the path is a real repository (e.g. github.com/marketplace/actions
+ * would match). Callers rely on the content script's `matches` pattern to gate non-repo pages.
  *
  * @example
  * extractGithubRepo('https://github.com/facebook/react/issues/42?q=bug')
