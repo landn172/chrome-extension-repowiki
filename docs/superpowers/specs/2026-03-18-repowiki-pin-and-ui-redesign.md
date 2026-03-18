@@ -113,18 +113,21 @@ No chevron button. No dropdown.
 ```
 Falls back to the plain dropdown with all enabled providers (no split). This is a degraded but graceful state.
 
-**Case D — no providers enabled:** skip injection entirely.
+**Case D — no providers enabled (includes: pinned disabled AND all others disabled):** skip injection entirely.
 
 ### Styling
 
 Injected via `<style id="repowiki-styles">` once. Match GitHub's `.btn.btn-sm` appearance.
 
+`.repowiki-wrapper` is **removed** (was used for dropdown positioning in the old design). `.repowiki-group` replaces it and must include `position: relative` so the absolutely-positioned `.repowiki-dropdown` renders below the group correctly.
+
 ```css
 .repowiki-group {
   display: inline-flex;
+  position: relative;
   border: 1px solid rgba(31,35,40,.15);
   border-radius: 6px;
-  overflow: hidden;
+  overflow: visible; /* allow dropdown to overflow */
 }
 .repowiki-primary {
   display: inline-flex;
@@ -176,7 +179,7 @@ Injected via `<style id="repowiki-styles">` once. Match GitHub's `.btn.btn-sm` a
 - Duplicate guard: `[data-repowiki-btn]` on the `<li>` — unchanged
 - SPA navigation: `history.pushState` patch + `popstate` + `MutationObserver` — unchanged
 - `ctx.onInvalidated`: restore `pushState`, disconnect observer, remove `#repowiki-styles` — unchanged
-- `closeDropdown`: scoped `querySelector('[data-repowiki-btn] .repowiki-dropdown')` — unchanged
+- `closeDropdown`: `document.querySelector<HTMLUListElement>('[data-repowiki-btn] .repowiki-dropdown')?.style.setProperty('display', 'none')` — unchanged (still works because the dropdown is a descendant of `[data-repowiki-btn]`)
 
 ---
 
@@ -196,14 +199,11 @@ New structure:
       <div class="logo">R</div>
       <span class="title">RepoWiki</span>
     </div>
-    <span id="repo-chip"></span>  <!-- populated by JS; hidden if not on repo page -->
+    <span id="repo-chip" style="display:none"></span>  <!-- shown by JS only on repo page -->
   </div>
 
-  <!-- Pinned button -->
-  <div id="pinned-btn">
-    <!-- populated by JS -->
-    <!-- dimmed (pointer-events: none, opacity: 0.3) when not on a repo page -->
-  </div>
+  <!-- Pinned button — always rendered; dimmed when inactive -->
+  <div id="pinned-btn"></div>
 
   <div class="divider"></div>
 
@@ -219,24 +219,36 @@ Width: 280px.
 ### `main.ts` Behavior
 
 1. Load `enabledProviders` + `pinnedProvider` from `browser.storage.sync` (single `.get` call), fall back to defaults on failure.
-2. Resolve `pinnedId` from storage (fall back to `PROVIDERS.find(p => p.pinnedByDefault)?.id`).
-3. Query active tab URL, call `extractGithubRepo`.
-4. Render `#repo-chip`: show `owner/repo` if on a repo page; hide chip otherwise.
-5. Render `#pinned-btn`:
-   - Find the pinned provider object from `PROVIDERS`
-   - Show provider name + "Pinned · tap to open" subtext + ↗ icon
-   - If on a repo page: clicking calls `browser.tabs.create` with the provider URL, then `window.close()`; wrap in try/catch (stay open on failure)
-   - If not on a repo page: dim the button (`opacity: 0.3`, `pointer-events: none`), show "Open a GitHub repo to use" subtext instead
-6. Render `#providers-section`: one row per provider from `PROVIDERS`:
+2. Resolve `pinnedId: string` (let, mutable) from storage; fall back to `PROVIDERS.find(p => p.pinnedByDefault)?.id ?? PROVIDERS[0].id`.
+3. Query active tab URL, call `extractGithubRepo`. Store result as `repoInfo`.
+4. Render `#repo-chip`: set `display: inline` and `textContent = owner/repo` if on a repo page; leave `display: none` otherwise.
+5. Define `renderPinnedBtn(repoInfo: { owner: string; repo: string } | null, pinnedId: string): void`:
+   - Clears `#pinned-btn` content
+   - Finds `pinnedProvider = PROVIDERS.find(p => p.id === pinnedId)`
+   - Determines `isActive`:
+     - `false` if `repoInfo` is null (not on a repo page)
+     - `false` if `isEnabled(pinnedId, ...)` returns false (pinned provider is disabled)
+     - `true` otherwise
+   - Renders the button content:
+     - Provider name
+     - Subtext: `"Pinned · tap to open"` when active; `"Open a GitHub repo to use"` when not on repo page; `"Pinned provider is disabled"` when on repo page but provider is disabled
+     - ↗ icon
+   - If `isActive`: clicking calls `browser.tabs.create({ url: pinnedProvider.transform(owner, repo) })` then `window.close()`; wrap in async try/catch (stay open on failure)
+   - If not active: set `opacity: 0.3` and `pointer-events: none` on the button
+6. Call `renderPinnedBtn(repoInfo, pinnedId)` once at startup.
+7. Render `#providers-section`: one row per provider from `PROVIDERS`:
    - Provider name
-   - Pin button (📍): clicking sets `pinnedProvider` in storage, updates `pinnedId`, re-renders `#pinned-btn` and re-renders all pin buttons to reflect new state
-   - Enable toggle: same logic as current (write-then-mutate pattern with checkbox revert on failure)
-7. A `renderPinnedBtn(repoInfo)` helper encapsulates step 5 so pin-button clicks can call it to re-render.
+   - Pin button (📍 icon, highlighted when `provider.id === pinnedId`): on click:
+     1. Write `browser.storage.sync.set({ pinnedProvider: provider.id })`
+     2. On success: update `pinnedId = provider.id`, call `renderPinnedBtn(repoInfo, pinnedId)`, re-render all pin button highlights
+     3. On failure: no revert needed (radio state unchanged)
+   - Enable toggle: same write-then-mutate pattern with checkbox revert on failure. On success: also call `renderPinnedBtn(repoInfo, pinnedId)` to reflect updated active state.
+8. Top-level error handler: `main().catch(() => { /* render #pinned-btn in dimmed/inactive state */ renderPinnedBtn(null, defaultPinnedId) })` where `defaultPinnedId` is determined before the async work begins.
 
 ### Storage writes
 
-- **Toggle change**: `browser.storage.sync.set({ enabledProviders: { ...enabledMap, [id]: newVal } })`, update `enabledMap` only on success, revert checkbox on failure — same as current.
-- **Pin change**: `browser.storage.sync.set({ pinnedProvider: id })`, update `pinnedId` only on success. No revert UI needed (radio — the button just stays as it was if write fails).
+- **Toggle change**: `browser.storage.sync.set({ enabledProviders: { ...enabledMap, [id]: newVal } })`, update `enabledMap` only on success, revert checkbox on failure. On success also call `renderPinnedBtn(repoInfo, pinnedId)` to update the pinned button's active state.
+- **Pin change**: `browser.storage.sync.set({ pinnedProvider: id })`, update `pinnedId` (the `let` variable in scope) only on success. Call `renderPinnedBtn(repoInfo, pinnedId)` and re-render pin button highlights. No revert UI needed (radio — the button just stays as it was if write fails).
 
 ---
 
