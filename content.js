@@ -43,8 +43,11 @@
     const observer = new MutationObserver(() => {
       if (!document.querySelector(`[${BUTTON_ATTR}]`)) {
         observer.disconnect();
-        injectButton();
-        observer.observe(header, { childList: true, subtree: true });
+        try {
+          injectButton();
+        } finally {
+          observer.observe(header, { childList: true, subtree: true });
+        }
       }
     });
 
