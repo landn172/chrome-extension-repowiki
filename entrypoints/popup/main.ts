@@ -1,26 +1,57 @@
 import { PROVIDERS, extractGithubRepo } from '../../utils/providers';
 
+const defaultPinnedId = PROVIDERS.find(p => p.pinnedByDefault)?.id ?? PROVIDERS[0].id;
+
+function renderDimmedPinnedBtn(): void {
+  const container = document.getElementById('pinned-btn') as HTMLDivElement | null;
+  if (!container) return;
+
+  const provider = PROVIDERS.find(p => p.id === defaultPinnedId);
+
+  const inner = document.createElement('div');
+  inner.style.flex = '1';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'pinned-name';
+  nameEl.textContent = provider?.name ?? '';
+
+  const subEl = document.createElement('div');
+  subEl.className = 'pinned-sub';
+  subEl.textContent = 'Open a GitHub repo to use';
+
+  inner.appendChild(nameEl);
+  inner.appendChild(subEl);
+
+  const icon = document.createElement('span');
+  icon.className = 'open-icon';
+  icon.textContent = '↗';
+
+  container.replaceChildren(inner, icon);
+  container.style.opacity = '0.3';
+  container.style.pointerEvents = 'none';
+}
+
 async function main(): Promise<void> {
-  // Load enabled state from storage, fall back to defaults
   let enabledMap: Record<string, boolean> = {};
+  let pinnedId: string = defaultPinnedId;
+
   try {
-    const result = await browser.storage.sync.get('enabledProviders');
+    const result = await browser.storage.sync.get(['enabledProviders', 'pinnedProvider']);
     const stored = result.enabledProviders;
     if (stored !== null && typeof stored === 'object' && !Array.isArray(stored)) {
       enabledMap = stored as Record<string, boolean>;
+    }
+    if (typeof result.pinnedProvider === 'string') {
+      pinnedId = result.pinnedProvider;
     }
   } catch {
     // Fall back to defaults
   }
 
-  function isEnabled(id: string, defaultVal: boolean): boolean {
-    return id in enabledMap ? enabledMap[id] : defaultVal;
+  function isEnabled(id: string): boolean {
+    const provider = PROVIDERS.find(p => p.id === id);
+    return id in enabledMap ? enabledMap[id] : (provider?.enabledByDefault ?? false);
   }
-
-  const linksSection = document.getElementById('links-section') as HTMLDivElement;
-  const notRepoMsg = document.getElementById('not-repo-msg') as HTMLParagraphElement;
-  const allDisabledMsg = document.getElementById('all-disabled-msg') as HTMLParagraphElement;
-  const settingsSection = document.getElementById('settings-section') as HTMLDivElement;
 
   // Query active tab
   let repoInfo: { owner: string; repo: string } | null = null;
@@ -28,89 +59,114 @@ async function main(): Promise<void> {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     repoInfo = tab?.url ? extractGithubRepo(tab.url) : null;
   } catch {
-    notRepoMsg.style.display = 'block';
-    // Still render settings below, even on tab query failure
+    // repoInfo stays null
   }
 
-  if (!repoInfo) {
-    notRepoMsg.style.display = 'block';
+  // Render repo chip
+  const repoChip = document.getElementById('repo-chip') as HTMLSpanElement;
+  if (repoInfo) {
+    repoChip.textContent = `${repoInfo.owner}/${repoInfo.repo}`;
+    repoChip.style.display = 'inline';
   }
 
-  // Render link rows based on current enabledMap and repoInfo
-  function renderLinks(): void {
-    // Note: notRepoMsg visibility is managed separately (before renderLinks is ever called).
-    // This function only manages linksSection and allDisabledMsg.
-    while (linksSection.firstChild) {
-      linksSection.removeChild(linksSection.firstChild);
+  function renderPinnedBtn(
+    info: { owner: string; repo: string } | null,
+    id: string
+  ): void {
+    const container = document.getElementById('pinned-btn') as HTMLDivElement;
+
+    // Reset inline styles from previous render
+    container.style.opacity = '';
+    container.style.pointerEvents = '';
+    // Remove all previous click listeners by replacing the node with a clone
+    const fresh = container.cloneNode(false) as HTMLDivElement;
+    container.parentNode!.replaceChild(fresh, container);
+
+    const provider = PROVIDERS.find(p => p.id === id);
+    const isActive = !!info && !!provider && isEnabled(id);
+
+    const inner = document.createElement('div');
+    inner.style.flex = '1';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'pinned-name';
+    nameEl.textContent = provider?.name ?? '';
+
+    const subEl = document.createElement('div');
+    subEl.className = 'pinned-sub';
+    if (!info) {
+      subEl.textContent = 'Open a GitHub repo to use';
+    } else if (!isEnabled(id)) {
+      subEl.textContent = 'Pinned provider is disabled';
+    } else {
+      subEl.textContent = 'Pinned · tap to open';
     }
-    allDisabledMsg.style.display = 'none';
-    linksSection.style.display = 'none';
 
-    if (!repoInfo) return;
+    inner.appendChild(nameEl);
+    inner.appendChild(subEl);
 
-    const enabledProviders = PROVIDERS.filter(p => isEnabled(p.id, p.enabledByDefault));
+    const icon = document.createElement('span');
+    icon.className = 'open-icon';
+    icon.textContent = '↗';
 
-    if (enabledProviders.length === 0) {
-      allDisabledMsg.style.display = 'block';
-      return;
-    }
+    fresh.appendChild(inner);
+    fresh.appendChild(icon);
 
-    linksSection.style.display = 'block';
-    for (const provider of enabledProviders) {
-      const row = document.createElement('div');
-      row.className = 'provider-row';
-
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'provider-name';
-      nameSpan.textContent = provider.name;
-
-      const link = document.createElement('a');
-      link.className = 'open-link';
-      link.href = provider.transform(repoInfo.owner, repoInfo.repo);
-      link.textContent = 'Open ↗';
-      link.addEventListener('click', async (e) => {
-        e.preventDefault();
+    if (isActive && info && provider) {
+      const url = provider.transform(info.owner, info.repo);
+      fresh.addEventListener('click', async () => {
         try {
-          await browser.tabs.create({ url: provider.transform(repoInfo!.owner, repoInfo!.repo) });
+          await browser.tabs.create({ url });
           window.close();
         } catch {
-          // tab creation failed — leave popup open
+          // stay open on failure
         }
       });
-
-      row.appendChild(nameSpan);
-      row.appendChild(link);
-      linksSection.appendChild(row);
+    } else {
+      fresh.style.opacity = '0.3';
+      fresh.style.pointerEvents = 'none';
     }
   }
 
-  renderLinks();
+  renderPinnedBtn(repoInfo, pinnedId);
 
-  // Render settings checkboxes (always visible)
+  // Render providers section
+  const section = document.getElementById('providers-section') as HTMLDivElement;
+
+  const labelEl = document.createElement('div');
+  labelEl.className = 'section-label';
+  labelEl.textContent = 'Providers';
+  section.appendChild(labelEl);
+
   for (const provider of PROVIDERS) {
-    const label = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.setAttribute('data-provider-id', provider.id);
-    checkbox.checked = isEnabled(provider.id, provider.enabledByDefault);
-    checkbox.addEventListener('change', async () => {
-      const newValue = checkbox.checked;
+    const row = document.createElement('div');
+    row.className = 'provider-row';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'p-name';
+    nameSpan.textContent = provider.name;
+
+    const toggle = document.createElement('div');
+    toggle.className = 'toggle' + (isEnabled(provider.id) ? ' on' : '');
+    toggle.addEventListener('click', async () => {
+      const newValue = !isEnabled(provider.id);
       try {
-        await browser.storage.sync.set({ enabledProviders: { ...enabledMap, [provider.id]: newValue } });
+        await browser.storage.sync.set({
+          enabledProviders: { ...enabledMap, [provider.id]: newValue },
+        });
         enabledMap[provider.id] = newValue;
+        toggle.classList.toggle('on', newValue);
       } catch {
-        // Revert checkbox if write failed
-        checkbox.checked = !newValue;
+        // Write failed — revert toggle visual (enabledMap unchanged)
+        toggle.classList.toggle('on', !newValue);
       }
-      renderLinks();
+      renderPinnedBtn(repoInfo, pinnedId);
     });
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(provider.name));
-    settingsSection.appendChild(label);
+
+    row.appendChild(nameSpan);
+    row.appendChild(toggle);
+    section.appendChild(row);
   }
 }
 
-main().catch(() => {
-  const notRepoMsg = document.getElementById('not-repo-msg') as HTMLParagraphElement;
-  if (notRepoMsg) notRepoMsg.style.display = 'block';
-});
+main().catch(renderDimmedPinnedBtn);
