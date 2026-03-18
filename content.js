@@ -39,17 +39,16 @@
   function observeAndInject() {
     injectButton();
 
-    // Watch for DOM changes in case the header re-renders
+    const header = document.querySelector('header') || document.body;
     const observer = new MutationObserver(() => {
       if (!document.querySelector(`[${BUTTON_ATTR}]`)) {
+        observer.disconnect();
         injectButton();
+        observer.observe(header, { childList: true, subtree: true });
       }
     });
 
-    // Observe the header area only — not document.body (too noisy)
-    const header = document.querySelector('header') || document.body;
     observer.observe(header, { childList: true, subtree: true });
-
     return observer;
   }
 
@@ -70,6 +69,12 @@
   const origPushState = history.pushState.bind(history);
   history.pushState = function (...args) {
     origPushState(...args);
+    onUrlChange();
+  };
+
+  const origReplaceState = history.replaceState.bind(history);
+  history.replaceState = function (...args) {
+    origReplaceState(...args);
     onUrlChange();
   };
 
