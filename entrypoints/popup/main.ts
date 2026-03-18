@@ -32,12 +32,14 @@ async function main(): Promise<void> {
     // Still render settings below, even on tab query failure
   }
 
-  if (!repoInfo && notRepoMsg.style.display !== 'block') {
+  if (!repoInfo) {
     notRepoMsg.style.display = 'block';
   }
 
   // Render link rows based on current enabledMap and repoInfo
   function renderLinks(): void {
+    // Note: notRepoMsg visibility is managed separately (before renderLinks is ever called).
+    // This function only manages linksSection and allDisabledMsg.
     while (linksSection.firstChild) {
       linksSection.removeChild(linksSection.firstChild);
     }
@@ -66,10 +68,14 @@ async function main(): Promise<void> {
       link.className = 'open-link';
       link.href = provider.transform(repoInfo.owner, repoInfo.repo);
       link.textContent = 'Open ↗';
-      link.addEventListener('click', (e) => {
+      link.addEventListener('click', async (e) => {
         e.preventDefault();
-        browser.tabs.create({ url: provider.transform(repoInfo!.owner, repoInfo!.repo) });
-        window.close();
+        try {
+          await browser.tabs.create({ url: provider.transform(repoInfo!.owner, repoInfo!.repo) });
+          window.close();
+        } catch {
+          // tab creation failed — leave popup open
+        }
       });
 
       row.appendChild(nameSpan);
