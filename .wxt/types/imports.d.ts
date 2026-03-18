@@ -15,6 +15,7 @@ declare global {
   const defineWxtPlugin: typeof import('wxt/utils/define-wxt-plugin').defineWxtPlugin
   const fakeBrowser: typeof import('wxt/testing').fakeBrowser
   const getAppConfig: typeof import('wxt/utils/app-config').getAppConfig
+  const getDeepWikiUrl: typeof import('/Users/jy/github-landn172/chrome-extension-deepwiki/utils/deepwiki').getDeepWikiUrl
   const injectScript: typeof import('wxt/utils/inject-script').injectScript
   const storage: typeof import('wxt/utils/storage').storage
   const useAppConfig: typeof import('wxt/utils/app-config').useAppConfig

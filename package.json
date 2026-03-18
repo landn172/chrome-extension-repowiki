@@ -8,6 +8,7 @@
     "zip": "wxt zip"
   },
   "devDependencies": {
+    "typescript": "^5.9.3",
     "wxt": "latest"
   }
 }
