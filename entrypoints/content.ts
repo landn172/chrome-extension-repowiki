@@ -109,7 +109,7 @@ export default defineContentScript({
         .repowiki-primary:hover { background: var(--rw-btn-hover); }
         .repowiki-chevron {
           display: inline-flex; align-items: center;
-          padding: 3px 9px;
+          padding: 3px 4px;
           background: var(--rw-btn-bg);
           border: none; border-radius: 0 5px 5px 0;
           color: var(--rw-btn-text); cursor: pointer; line-height: 20px;
