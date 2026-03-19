@@ -165,6 +165,21 @@ export default defineContentScript({
       document.head.appendChild(style);
     }
 
+    function createChevronSvg(): SVGSVGElement {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '10');
+      svg.setAttribute('height', '10');
+      svg.setAttribute('viewBox', '0 0 16 16');
+      svg.setAttribute('fill', 'currentColor');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute(
+        'd',
+        'M4.427 7.427l3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 7H4.604a.25.25 0 0 0-.177.427z'
+      );
+      svg.appendChild(path);
+      return svg;
+    }
+
     function createPinSvg(): SVGSVGElement {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('width', '12');
@@ -278,7 +293,7 @@ export default defineContentScript({
         const chevronBtn = document.createElement('button');
         chevronBtn.type = 'button';
         chevronBtn.className = 'repowiki-chevron';
-        chevronBtn.textContent = '▾';
+        chevronBtn.appendChild(createChevronSvg());
 
         const dropdown = buildDropdown(enabledProviders, repoInfo);
         chevronBtn.addEventListener('click', (e) => {
@@ -312,7 +327,8 @@ export default defineContentScript({
         const chevronOnlyBtn = document.createElement('button');
         chevronOnlyBtn.type = 'button';
         chevronOnlyBtn.className = 'repowiki-chevron-only';
-        chevronOnlyBtn.textContent = 'Wiki ▾';
+        chevronOnlyBtn.appendChild(document.createTextNode('Wiki\u00a0'));
+        chevronOnlyBtn.appendChild(createChevronSvg());
 
         const dropdown = buildDropdown(enabledProviders, repoInfo);
         chevronOnlyBtn.addEventListener('click', (e) => {
