@@ -32,7 +32,13 @@ export const PROVIDERS: readonly WikiProvider[] = [
     id: 'readmex',
     name: 'Readmex',
     transform: (owner, repo) => {
-      const prefix = navigator.language.startsWith('zh') ? '' : 'en-US/';
+      let isZh = false;
+      try {
+        isZh = navigator.language.startsWith('zh');
+      } catch {
+        // navigator.language unavailable in service worker — default to English
+      }
+      const prefix = isZh ? '' : 'en-US/';
       return `https://readmex.com/${prefix}${owner}/${repo}`;
     },
     enabledByDefault: true,
@@ -57,4 +63,31 @@ export function extractGithubRepo(url: string): { owner: string; repo: string } 
   const match = url.match(/^https:\/\/github\.com\/([^/?#]+)\/([^/?#]+)/);
   if (!match) return null;
   return { owner: match[1], repo: match[2] };
+}
+
+export interface CustomProvider {
+  id: string;
+  name: string;
+  urlTemplate: string;
+}
+
+export function buildCustomTransform(urlTemplate: string): (owner: string, repo: string) => string {
+  return (owner, repo) => urlTemplate.replace('{owner}', owner).replace('{repo}', repo);
+}
+
+export function mergeCustomProviders(customProviders: CustomProvider[]): WikiProvider[] {
+  return [
+    ...PROVIDERS,
+    ...customProviders.map(cp => ({
+      id: cp.id,
+      name: cp.name,
+      transform: buildCustomTransform(cp.urlTemplate),
+      enabledByDefault: true,
+      pinnedByDefault: false,
+    })),
+  ];
+}
+
+export function getProviderInitials(name: string): string {
+  return name.split(/\s+/).filter(w => w.length > 0).map(w => w[0]).join('').toUpperCase().slice(0, 4);
 }

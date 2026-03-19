@@ -1,4 +1,4 @@
-import { PROVIDERS, extractGithubRepo } from '../utils/providers';
+import { PROVIDERS, extractGithubRepo, mergeCustomProviders, type WikiProvider, type CustomProvider } from '../utils/providers';
 
 export default defineContentScript({
   matches: ['https://github.com/*/*'],
@@ -9,8 +9,9 @@ export default defineContentScript({
     // Load enabledProviders and pinnedProvider in a single call
     let enabledMap: Record<string, boolean> = {};
     let pinnedId = PROVIDERS.find(p => p.pinnedByDefault)?.id ?? PROVIDERS[0].id;
+    let customList: CustomProvider[] = [];
     try {
-      const result = await browser.storage.sync.get(['enabledProviders', 'pinnedProvider']);
+      const result = await browser.storage.sync.get(['enabledProviders', 'pinnedProvider', 'customProviders']);
       const stored = result.enabledProviders;
       if (stored !== null && typeof stored === 'object' && !Array.isArray(stored)) {
         enabledMap = stored as Record<string, boolean>;
@@ -18,9 +19,14 @@ export default defineContentScript({
       if (typeof result.pinnedProvider === 'string') {
         pinnedId = result.pinnedProvider;
       }
+      if (Array.isArray(result.customProviders)) {
+        customList = result.customProviders as CustomProvider[];
+      }
     } catch {
       // Fall back to defaults
     }
+
+    let allProviders: WikiProvider[] = mergeCustomProviders(customList);
 
     function isEnabled(id: string, defaultVal: boolean): boolean {
       return id in enabledMap ? enabledMap[id] : defaultVal;
@@ -222,7 +228,7 @@ export default defineContentScript({
     }
 
     function buildDropdown(
-      providers: readonly (typeof PROVIDERS)[number][],
+      providers: readonly WikiProvider[],
       repoInfo: { owner: string; repo: string }
     ): HTMLUListElement {
       const dropdown = document.createElement('ul');
@@ -284,12 +290,12 @@ export default defineContentScript({
       const actionsContainer = document.querySelector('.pagehead-actions');
       if (!actionsContainer) return;
 
-      const enabledProviders = PROVIDERS.filter(p => isEnabled(p.id, p.enabledByDefault));
+      const enabledProviders = allProviders.filter(p => isEnabled(p.id, p.enabledByDefault));
       if (enabledProviders.length === 0) return; // Case D
 
       injectStyles();
 
-      const pinnedProvider = PROVIDERS.find(p => p.id === pinnedId);
+      const pinnedProvider = allProviders.find(p => p.id === pinnedId);
       const pinnedIsEnabled = pinnedProvider
         ? isEnabled(pinnedProvider.id, pinnedProvider.enabledByDefault)
         : false;
@@ -431,6 +437,15 @@ export default defineContentScript({
       if ('pinnedProvider' in changes) {
         const v = changes.pinnedProvider.newValue;
         if (typeof v === 'string') pinnedId = v;
+      }
+      if ('customProviders' in changes) {
+        const v = changes.customProviders.newValue;
+        if (Array.isArray(v)) {
+          customList = v as CustomProvider[];
+        } else {
+          customList = [];
+        }
+        allProviders = mergeCustomProviders(customList);
       }
       reInjectButton();
     };

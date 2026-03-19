@@ -1,3 +1,4 @@
 node_modules/
 .output/
-.wxt/tsconfig.json
+.wxt/
+.superpowers/

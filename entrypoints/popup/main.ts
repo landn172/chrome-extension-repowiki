@@ -1,6 +1,15 @@
-import { PROVIDERS, extractGithubRepo } from '../../utils/providers';
+import { PROVIDERS, extractGithubRepo, mergeCustomProviders, type WikiProvider, type CustomProvider } from '../../utils/providers';
 
 const defaultPinnedId = PROVIDERS.find(p => p.pinnedByDefault)?.id ?? PROVIDERS[0].id;
+
+async function loadCustomProviders(): Promise<CustomProvider[]> {
+  try {
+    const result = await browser.storage.sync.get('customProviders');
+    const stored = result.customProviders;
+    if (Array.isArray(stored)) return stored as CustomProvider[];
+  } catch { /* ignore */ }
+  return [];
+}
 
 function renderDimmedPinnedBtn(): void {
   const container = document.getElementById('pinned-btn') as HTMLDivElement | null;
@@ -48,8 +57,11 @@ async function main(): Promise<void> {
     // Fall back to defaults
   }
 
+  const customProviders: CustomProvider[] = await loadCustomProviders();
+  let allProviders: WikiProvider[] = mergeCustomProviders(customProviders);
+
   function isEnabled(id: string): boolean {
-    const provider = PROVIDERS.find(p => p.id === id);
+    const provider = allProviders.find(p => p.id === id);
     return id in enabledMap ? enabledMap[id] : (provider?.enabledByDefault ?? false);
   }
 
@@ -82,7 +94,7 @@ async function main(): Promise<void> {
     const fresh = container.cloneNode(false) as HTMLDivElement;
     container.parentNode!.replaceChild(fresh, container);
 
-    const provider = PROVIDERS.find(p => p.id === id);
+    const provider = allProviders.find(p => p.id === id);
     const isActive = !!info && !!provider && isEnabled(id);
 
     const inner = document.createElement('div');
@@ -138,35 +150,194 @@ async function main(): Promise<void> {
   labelEl.textContent = 'Providers';
   section.appendChild(labelEl);
 
-  for (const provider of PROVIDERS) {
-    const row = document.createElement('div');
-    row.className = 'provider-row';
+  function renderProviderList(): void {
+    // Clear existing rows (keep label)
+    while (section.children.length > 1) {
+      section.removeChild(section.lastChild!);
+    }
 
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'p-name';
-    nameSpan.textContent = provider.name;
+    for (const provider of allProviders) {
+      const row = document.createElement('div');
+      row.className = 'provider-row';
 
-    const toggle = document.createElement('div');
-    toggle.className = 'toggle' + (isEnabled(provider.id) ? ' on' : '');
-    toggle.addEventListener('click', async () => {
-      const newValue = !isEnabled(provider.id);
-      try {
-        await browser.storage.sync.set({
-          enabledProviders: { ...enabledMap, [provider.id]: newValue },
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'p-name';
+      nameSpan.textContent = provider.name;
+
+      // Delete button for custom providers only
+      const isCustom = !PROVIDERS.some(p => p.id === provider.id);
+      if (isCustom) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = '\u00d7';
+        deleteBtn.addEventListener('click', async () => {
+          const updated = customProviders.filter(cp => cp.id !== provider.id);
+          try {
+            await browser.storage.sync.set({ customProviders: updated });
+            customProviders.length = 0;
+            customProviders.push(...updated);
+            allProviders = mergeCustomProviders(customProviders);
+            renderProviderList();
+            renderPinnedBtn(repoInfo, pinnedId);
+          } catch { /* ignore */ }
         });
-        enabledMap[provider.id] = newValue;
-        toggle.classList.toggle('on', newValue);
-      } catch {
-        // Write failed — revert toggle visual (enabledMap unchanged)
-        toggle.classList.toggle('on', !newValue);
+        row.appendChild(nameSpan);
+        row.appendChild(deleteBtn);
+      } else {
+        row.appendChild(nameSpan);
       }
-      renderPinnedBtn(repoInfo, pinnedId);
+
+      const toggle = document.createElement('div');
+      toggle.className = 'toggle' + (isEnabled(provider.id) ? ' on' : '');
+      toggle.addEventListener('click', async () => {
+        const newValue = !isEnabled(provider.id);
+        try {
+          await browser.storage.sync.set({
+            enabledProviders: { ...enabledMap, [provider.id]: newValue },
+          });
+          enabledMap[provider.id] = newValue;
+          toggle.classList.toggle('on', newValue);
+        } catch {
+          toggle.classList.toggle('on', !newValue);
+        }
+        renderPinnedBtn(repoInfo, pinnedId);
+      });
+
+      row.appendChild(toggle);
+      section.appendChild(row);
+    }
+
+    // Add the "+" row and form
+    renderAddRow();
+  }
+
+  function renderAddRow(): void {
+    // Remove existing add row/form if any
+    section.querySelector('.add-row')?.remove();
+    section.querySelector('.add-form')?.remove();
+
+    const addRow = document.createElement('div');
+    addRow.className = 'add-row';
+
+    const addIcon = document.createElement('span');
+    addIcon.className = 'add-icon';
+    addIcon.textContent = '+';
+    const addText = document.createElement('span');
+    addText.className = 'add-text';
+    addText.textContent = 'Add custom provider';
+    addRow.appendChild(addIcon);
+    addRow.appendChild(addText);
+
+    const form = document.createElement('div');
+    form.className = 'add-form';
+    form.style.display = 'none';
+
+    addRow.addEventListener('click', () => {
+      addRow.style.display = 'none';
+      form.style.display = 'block';
+      nameInput.focus();
     });
 
-    row.appendChild(nameSpan);
-    row.appendChild(toggle);
-    section.appendChild(row);
+    const label = document.createElement('div');
+    label.className = 'add-form-label';
+    label.textContent = 'Add Custom Provider';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'Name (e.g. My Wiki)';
+    nameInput.maxLength = 40;
+
+    const urlInput = document.createElement('input');
+    urlInput.type = 'text';
+    urlInput.placeholder = 'https://wiki.com/{owner}/{repo}';
+    urlInput.className = 'mono';
+
+    const errorEl = document.createElement('div');
+    errorEl.className = 'add-form-error';
+
+    const actions = document.createElement('div');
+    actions.className = 'add-form-actions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn-cancel';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => {
+      form.style.display = 'none';
+      addRow.style.display = '';
+      nameInput.value = '';
+      urlInput.value = '';
+      errorEl.style.display = 'none';
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn-add';
+    addBtn.textContent = 'Add';
+    addBtn.addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      const url = urlInput.value.trim();
+
+      // Validate
+      if (!name) {
+        errorEl.textContent = 'Name is required';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (name.length > 40) {
+        errorEl.textContent = 'Name must be 40 characters or less';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!/^https?:\/\//.test(url)) {
+        errorEl.textContent = 'URL must start with https:// or http://';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!url.includes('{owner}') || !url.includes('{repo}')) {
+        errorEl.textContent = 'URL must contain {owner} and {repo}';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      const newProvider: CustomProvider = {
+        id: crypto.randomUUID(),
+        name,
+        urlTemplate: url,
+      };
+
+      const updated = [...customProviders, newProvider];
+      try {
+        await browser.storage.sync.set({ customProviders: updated });
+        customProviders.push(newProvider);
+        allProviders = mergeCustomProviders(customProviders);
+        nameInput.value = '';
+        urlInput.value = '';
+        errorEl.style.display = 'none';
+        form.style.display = 'none';
+        addRow.style.display = '';
+        renderProviderList();
+        renderPinnedBtn(repoInfo, pinnedId);
+      } catch {
+        errorEl.textContent = 'Failed to save';
+        errorEl.style.display = 'block';
+      }
+    });
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(addBtn);
+    form.appendChild(label);
+    form.appendChild(nameInput);
+    form.appendChild(urlInput);
+    form.appendChild(errorEl);
+    form.appendChild(actions);
+
+    section.appendChild(addRow);
+    section.appendChild(form);
   }
+
+  renderProviderList();
 }
 
 main().catch(renderDimmedPinnedBtn);
