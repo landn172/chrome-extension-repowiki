@@ -64,3 +64,26 @@ export function extractGithubRepo(url: string): { owner: string; repo: string } 
   if (!match) return null;
   return { owner: match[1], repo: match[2] };
 }
+
+export interface CustomProvider {
+  id: string;
+  name: string;
+  urlTemplate: string;
+}
+
+export function buildCustomTransform(urlTemplate: string): (owner: string, repo: string) => string {
+  return (owner, repo) => urlTemplate.replace('{owner}', owner).replace('{repo}', repo);
+}
+
+export function mergeCustomProviders(customProviders: CustomProvider[]): WikiProvider[] {
+  return [
+    ...PROVIDERS,
+    ...customProviders.map(cp => ({
+      id: cp.id,
+      name: cp.name,
+      transform: buildCustomTransform(cp.urlTemplate),
+      enabledByDefault: true,
+      pinnedByDefault: false,
+    })),
+  ];
+}
