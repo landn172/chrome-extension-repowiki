@@ -32,7 +32,13 @@ export const PROVIDERS: readonly WikiProvider[] = [
     id: 'readmex',
     name: 'Readmex',
     transform: (owner, repo) => {
-      const prefix = navigator.language.startsWith('zh') ? '' : 'en-US/';
+      let isZh = false;
+      try {
+        isZh = navigator.language.startsWith('zh');
+      } catch {
+        // navigator.language unavailable in service worker — default to English
+      }
+      const prefix = isZh ? '' : 'en-US/';
       return `https://readmex.com/${prefix}${owner}/${repo}`;
     },
     enabledByDefault: true,
