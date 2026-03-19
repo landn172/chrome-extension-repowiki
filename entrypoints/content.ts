@@ -90,13 +90,39 @@ export default defineContentScript({
           --rw-pin-active-bg: #30363d;
           --rw-pin-active-border: #6e7681;
         }
+        @property --rw-angle {
+          syntax: '<angle>';
+          initial-value: 0deg;
+          inherits: false;
+        }
+        @keyframes rw-rainbow-spin {
+          to { --rw-angle: 360deg; }
+        }
         .repowiki-group {
           display: inline-flex;
           position: relative;
+          z-index: 0;
           border: 1px solid var(--rw-btn-border);
           border-radius: 6px;
           overflow: visible;
+          transition: border-color 0.2s;
         }
+        .repowiki-group::before {
+          content: '';
+          position: absolute;
+          inset: -1px;
+          border-radius: 7px;
+          background: conic-gradient(
+            from var(--rw-angle),
+            #6366f1, #a855f7, #ec4899, #f97316, #eab308, #22c55e, #06b6d4, #6366f1
+          );
+          z-index: -1;
+          opacity: 0;
+          transition: opacity 0.25s ease;
+          animation: rw-rainbow-spin 4s linear infinite;
+        }
+        .repowiki-group:hover::before { opacity: 1; }
+        .repowiki-group:hover { border-color: transparent; }
         .repowiki-primary {
           display: inline-flex; align-items: center; gap: 4px;
           padding: 3px 10px;
