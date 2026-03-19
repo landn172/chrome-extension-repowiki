@@ -12,16 +12,28 @@ export default defineBackground(() => {
 
     // Resolve pinned provider with fallback (matches content script logic)
     let pinnedId = PROVIDERS.find(p => p.pinnedByDefault)?.id ?? PROVIDERS[0].id;
+    let enabledMap: Record<string, boolean> = {};
     try {
-      const result = await browser.storage.sync.get('pinnedProvider');
+      const result = await browser.storage.sync.get(['pinnedProvider', 'enabledProviders']);
       if (typeof result.pinnedProvider === 'string') {
         pinnedId = result.pinnedProvider;
       }
+      const stored = result.enabledProviders;
+      if (stored !== null && typeof stored === 'object' && !Array.isArray(stored)) {
+        enabledMap = stored as Record<string, boolean>;
+      }
     } catch {
-      // Fall back to default
+      // Fall back to defaults
     }
 
-    const provider = PROVIDERS.find(p => p.id === pinnedId);
+    const isEnabled = (id: string, defaultVal: boolean) =>
+      id in enabledMap ? enabledMap[id] : defaultVal;
+
+    // If pinned provider is disabled, fall back to first enabled provider
+    let provider = PROVIDERS.find(p => p.id === pinnedId);
+    if (!provider || !isEnabled(provider.id, provider.enabledByDefault)) {
+      provider = PROVIDERS.find(p => isEnabled(p.id, p.enabledByDefault));
+    }
     if (!provider) return;
 
     const url = provider.transform(repoInfo.owner, repoInfo.repo);
