@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
-    "zip": "wxt zip"
+    "zip": "wxt zip",
+    "release": "git pull && npm version patch && git push && git push --tags",
+    "release:minor": "git pull && npm version minor && git push && git push --tags",
+    "release:major": "git pull && npm version major && git push && git push --tags"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
