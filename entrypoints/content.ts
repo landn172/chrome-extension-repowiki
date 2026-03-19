@@ -109,10 +109,10 @@ export default defineContentScript({
         .repowiki-primary:hover { background: var(--rw-btn-hover); }
         .repowiki-chevron {
           display: inline-flex; align-items: center;
-          padding: 3px 7px;
+          padding: 3px 9px;
           background: var(--rw-btn-bg);
           border: none; border-radius: 0 5px 5px 0;
-          font-size: 10px; color: var(--rw-btn-text); cursor: pointer; line-height: 20px;
+          color: var(--rw-btn-text); cursor: pointer; line-height: 20px;
         }
         .repowiki-chevron:hover { background: var(--rw-btn-hover); }
         .repowiki-chevron-only {
@@ -167,8 +167,8 @@ export default defineContentScript({
 
     function createChevronSvg(): SVGSVGElement {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('width', '10');
-      svg.setAttribute('height', '10');
+      svg.setAttribute('width', '16');
+      svg.setAttribute('height', '16');
       svg.setAttribute('viewBox', '0 0 16 16');
       svg.setAttribute('fill', 'currentColor');
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
