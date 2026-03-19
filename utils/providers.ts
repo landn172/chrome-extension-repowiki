@@ -87,3 +87,7 @@ export function mergeCustomProviders(customProviders: CustomProvider[]): WikiPro
     })),
   ];
 }
+
+export function getProviderInitials(name: string): string {
+  return name.split(/\s+/).filter(w => w.length > 0).map(w => w[0]).join('').toUpperCase().slice(0, 4);
+}
