@@ -373,10 +373,32 @@ export default defineContentScript({
     };
 
     ctx.addEventListener(window, 'popstate', onUrlChange);
+
+    // Live sync: re-inject when popup changes enabledProviders or pinnedProvider
+    const onStorageChanged = (
+      changes: Record<string, { newValue?: unknown }>,
+      area: string
+    ) => {
+      if (area !== 'sync') return;
+      if ('enabledProviders' in changes) {
+        const v = changes.enabledProviders.newValue;
+        if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+          enabledMap = v as Record<string, boolean>;
+        }
+      }
+      if ('pinnedProvider' in changes) {
+        const v = changes.pinnedProvider.newValue;
+        if (typeof v === 'string') pinnedId = v;
+      }
+      reInjectButton();
+    };
+    browser.storage.onChanged.addListener(onStorageChanged);
+
     ctx.onInvalidated(() => {
       history.pushState = origPushState;
       activeObserver.disconnect();
       document.removeEventListener('click', closeDropdown);
+      browser.storage.onChanged.removeListener(onStorageChanged);
       document.getElementById('repowiki-styles')?.remove();
     });
   },
