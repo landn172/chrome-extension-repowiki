@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="RepoWiki logo" width="128" />
+</p>
+
 # RepoWiki
 
 A Chrome extension that adds a **split button** to every GitHub repository page, letting you instantly open any repo in your preferred AI wiki provider — DeepWiki, CodeWiki, Zread, or Readmex.
