@@ -287,7 +287,9 @@ export default defineContentScript({
       const repoInfo = extractGithubRepo(location.href);
       if (!repoInfo) return;
 
-      const actionsContainer = document.querySelector('.pagehead-actions');
+      const actionsContainer = document.querySelector(
+        '.pagehead-actions, ul[class*="RepoHeaderActions-module_"][class*="_Actions"]'
+      );
       if (!actionsContainer) return;
 
       const enabledProviders = allProviders.filter(p => isEnabled(p.id, p.enabledByDefault));
